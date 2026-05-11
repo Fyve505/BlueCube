@@ -1,63 +1,38 @@
 class SiteLayout extends HTMLElement {
     connectedCallback() {
-        const main = this.querySelector("main")?.outerHTML || "";
+        const main = this.querySelector("main");
 
         this.innerHTML = `
 <header>
 <h1>
   <a href="/" style="text-decoration: none; color: inherit;">
-    <img src="/favicon.ico" alt="BlueCube Logo" width="48" height="48" style="vertical-align: middle;">
+    <img src="/favicon.ico" width="48">
     BlueCube
   </a>
 </h1>
 
 <nav>
-    <a href="bluecube.pages.dev"><i class="fa-solid fa-home"></i> Home</a>
-
-    <div class="dropdown">
-      <button class="dropbtn">
-        <i class="fa-solid fa-screwdriver-wrench"></i> Tools
-      </button>
-
-      <div class="dropdown-content">
-        <a href="/tools/Invisible-Text">
-          <i class="fa-solid fa-message"></i> Hidden-MSG
-        </a>
-      </div>
-    </div>
-
-    <div class="dropdown">
-      <button class="dropbtn">
-        <i class="fa-solid fa-link"></i> Links
-      </button>
-
-      <div class="dropdown-content">
-        <a href="https://github.com/Fyve505/BlueCube">
-          <i class="fa-brands fa-github"></i> Github
-        </a>
-      </div>
-    </div>
+    <a href="/">Home</a>
 
     <button id="themeToggle">
-      <i class="fa-solid fa-wind theme-toggle"></i> Theme
+        Theme
     </button>
 </nav>
 </header>
 
-${main}
+<main id="page-content"></main>
 
 <footer>
-    <p>&copy; 2025 BlueCube</p>
-
-    <h6>
-        This is BlueCube a project by 
-        <a href="https://github.com/Fyve505/" target="_blank">
-            Fyve505
-        </a>
-    </h6>
+    <p>© 2025 BlueCube</p>
 </footer>
 `;
 
+        // PUT ORIGINAL MAIN BACK
+        if (main) {
+            this.querySelector("#page-content").replaceWith(main);
+        }
+
+        // THEME
         const toggleBtn = document.getElementById("themeToggle");
 
         function applyTheme(theme) {
@@ -69,11 +44,6 @@ ${main}
 
         if (savedTheme) {
             applyTheme(savedTheme);
-        } else {
-            const prefersDark =
-                window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-            applyTheme(prefersDark ? "dark" : "light");
         }
 
         toggleBtn.addEventListener("click", () => {
