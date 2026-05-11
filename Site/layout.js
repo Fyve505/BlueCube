@@ -12,7 +12,7 @@ class SiteLayout extends HTMLElement {
 </h1>
 
 <nav>
-    <a href="https://bluecube.pages.dev/"><i class="fa-solid fa-home"></i> Home</a>
+    <a href="bluecube.pages.dev"><i class="fa-solid fa-home"></i> Home</a>
 
     <div class="dropdown">
       <button class="dropbtn">
