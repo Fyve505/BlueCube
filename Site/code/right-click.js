@@ -63,15 +63,23 @@ document.head.appendChild(style);
 // Create context menu
 const menu = document.createElement('ul');
 menu.id = 'contextMenu';
+
+const icons = ['🟥', '🟦'];
+
 for (let i = 1; i <= 5; i++) {
   const item = document.createElement('li');
-  item.textContent = (i % 2 === 0 ? '🔸' : '🔹') + ` Option ${i}`;
+
+  const icon = icons[i % 2];
+  item.textContent = `${icon} Option ${i}`;
+
   item.onclick = () => {
     alert(`✅ You selected Option ${i}`);
     menu.style.display = 'none';
   };
+
   menu.appendChild(item);
 }
+
 document.body.appendChild(menu);
 
 // Handle right-click
@@ -80,14 +88,22 @@ document.addEventListener('contextmenu', (e) => {
 
   if (window.innerWidth < 600 && 'ontouchstart' in window) return;
 
+  // make sure it's measurable
+  menu.style.display = 'block';
+
   const menuWidth = menu.offsetWidth;
   const menuHeight = menu.offsetHeight;
-  const x = (e.pageX + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : e.pageX;
-  const y = (e.pageY + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : e.pageY;
+
+  const x = (e.pageX + menuWidth > window.innerWidth)
+    ? window.innerWidth - menuWidth - 10
+    : e.pageX;
+
+  const y = (e.pageY + menuHeight > window.innerHeight)
+    ? window.innerHeight - menuHeight - 10
+    : e.pageY;
 
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
-  menu.style.display = 'block';
 });
 
 // Hide menu
