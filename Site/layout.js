@@ -74,7 +74,10 @@ class SiteLayout extends HTMLElement {
 <main id="page-content"></main>
 
 <footer>
-    <p>&copy; 2025 BlueCube</p>
+    <p>
+  © 2025-2026 Fyve505. This work is licensed under
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+</p>
 
     <h6>
         This is BlueCube a project by
