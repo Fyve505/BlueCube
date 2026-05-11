@@ -3,102 +3,156 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Console-v3</title>
+<title>Console</title>
+
+<!-- CMD icon -->
+<link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/8/8f/Windows_logo_-_2021.svg">
 
 <style>
   body, html {
     margin: 0;
     padding: 0;
-    background-color: black;
-    color: green;
-    font-family: 'Courier New', Courier, monospace;
+    background: black;
+    font-family: 'Courier New', monospace;
     height: 100%;
     overflow: hidden;
   }
 
-  #input-container {
+  /* TITLE BAR */
+  #title-bar {
     position: fixed;
-    bottom: 0;
+    top: 0;
     left: 0;
-    width: 100vw;
-    background-color: black;
-    padding: 10px 5px;
-    display: flex;
-    align-items: center;
-    border-top: 1px solid green;
-    z-index: 100;
-  }
-
-  .prompt {
-    margin-right: 5px;
-    flex-shrink: 0;
-  }
-
-  #input {
-    background: none;
-    border: none;
-    color: green;
-    outline: none;
     width: 100%;
-    font-family: 'Courier New', Courier, monospace;
+    background: #111;
+    color: #aaa;
+    padding: 5px 10px;
+    font-size: 13px;
+    border-bottom: 1px solid #333;
+    z-index: 200;
   }
 
+  /* TERMINAL */
   #terminal {
-    padding: 5px;
-    padding-bottom: 60px;
+    padding: 30px 10px 60px 10px;
     overflow-y: auto;
     height: 100vh;
     box-sizing: border-box;
+    color: #00aa00;
   }
 
   .output {
     white-space: pre-wrap;
     word-wrap: break-word;
-    padding: 0 5px;
+    padding: 2px 0;
+  }
+
+  /* INPUT BAR */
+  #input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: black;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #003300;
+  }
+
+  .prompt {
+    margin-right: 5px;
+    color: #00aa00;
+  }
+
+  #input {
+    background: none;
+    border: none;
+    outline: none;
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    color: #00aa00;
   }
 </style>
 </head>
 
 <body>
 
+<div id="title-bar">Console</div>
+
 <div id="terminal"></div>
 
 <div id="input-container">
-  <span class="prompt">></span>
+  <span class="prompt">C:\></span>
   <input type="text" id="input" autofocus />
 </div>
 
 <script>
   const terminal = document.getElementById("terminal");
   const input = document.getElementById("input");
+  const titleBar = document.getElementById("title-bar");
 
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      const command = input.value.trim();
+  let currentColor = "#00aa00";
+
+  function applyColor(color) {
+    currentColor = color;
+    terminal.style.color = color;
+    input.style.color = color;
+    document.querySelector(".prompt").style.color = color;
+  }
+
+  function print(text) {
+    const div = document.createElement("div");
+    div.className = "output";
+    div.style.color = currentColor;
+    div.textContent = text;
+    terminal.appendChild(div);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const cmd = input.value.trim();
       input.value = "";
-      runCommand(command);
+      runCommand(cmd);
     }
   });
 
   function runCommand(cmd) {
     if (!cmd) return;
 
-    printLine("> " + cmd);
+    print("C:\\> " + cmd);
 
-    if (cmd === "cls") {
+    const parts = cmd.split(" ");
+    const base = parts[0].toLowerCase();
+
+    // CLS
+    if (base === "cls") {
       terminal.innerHTML = "";
       return;
     }
 
-    printLine("Command not found: " + cmd);
-  }
+    // TITLE
+    if (base === "title") {
+      const newTitle = cmd.slice(6).trim();
+      titleBar.textContent = newTitle || "Console";
+      document.title = newTitle || "Console";
+      return;
+    }
 
-  function printLine(text) {
-    const div = document.createElement("div");
-    div.className = "output";
-    div.textContent = text;
-    terminal.appendChild(div);
-    terminal.scrollTop = terminal.scrollHeight;
+    // COLOR
+    if (base === "color") {
+      const color = parts[1];
+      if (!color) {
+        print("Usage: color <name/hex>");
+        return;
+      }
+      applyColor(color);
+      return;
+    }
+
+    print("'" + cmd + "' is not recognized as a command.");
   }
 
   document.addEventListener("click", () => input.focus());
