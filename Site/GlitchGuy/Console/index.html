@@ -457,9 +457,16 @@
     }, 50);
   }
 
-  function runCommand(raw) {
-    const cmd = raw.trim();
-    if (!cmd) return;
+function runCommand(raw) {
+  const line = raw.trim();
+  if (!line) return;
+
+  // split by && (CMD chaining)
+  const chain = line.split("&&").map(c => c.trim()).filter(Boolean);
+
+  for (let cmd of chain) {
+    const parts = cmd.split(/\s+/);
+    const base = parts[0].toLowerCase();
 
     history.push(cmd);
     history = history.slice(-200);
@@ -468,12 +475,11 @@
 
     print(`C:\\> ${cmd}`);
 
-    const parts = cmd.split(/\s+/);
-    const base = parts[0].toLowerCase();
+    // ---- COMMANDS ----
 
     if (base === "cls") {
       terminal.innerHTML = "";
-      return;
+      continue;
     }
 
     if (base === "title") {
@@ -482,22 +488,22 @@
       titleBar.textContent = finalTitle;
       document.title = finalTitle;
       saveState();
-      return;
+      continue;
     }
 
     if (base === "color") {
       setColor(parts[1]);
-      return;
+      continue;
     }
 
     if (base === "echo") {
       print(cmd.slice(5));
-      return;
+      continue;
     }
 
     if (base === "help") {
       showHelp(parts[1]);
-      return;
+      continue;
     }
 
     if (base === "clearhistory") {
@@ -505,49 +511,49 @@
       historyIndex = 0;
       saveState();
       print("History cleared.");
-      return;
+      continue;
     }
 
     if (base === "dir") {
       showDir();
-      return;
+      continue;
     }
 
     if (base === "time") {
       showTime();
-      return;
+      continue;
     }
 
     if (base === "date") {
       showDate();
-      return;
+      continue;
     }
 
     if (base === "matrix") {
       runMatrix();
-      return;
+      continue;
     }
 
     if (base === "calc") {
       const expr = cmd.slice(5).trim();
       if (!expr) {
         print("Usage: calc 2+2");
-        print("Allowed: + - / x");
-        return;
+        continue;
       }
 
       const result = evaluateExpression(expr);
       if (!result.ok) {
         print(result.error);
-        return;
+        continue;
       }
 
       print(`${expr} = ${result.value}`);
-      return;
+      continue;
     }
 
     cmdNotFound(cmd);
   }
+}
 
   function playKeySound(key) {
     try {
