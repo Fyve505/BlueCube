@@ -83,6 +83,7 @@ class SiteLayout extends HTMLElement {
         </a>
     </h6>
 </footer>
+<script src="code/right-click.js"></script>
 `;
 
         if (originalMain) {
