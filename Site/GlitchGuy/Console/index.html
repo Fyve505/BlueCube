@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Console</title>
+<title>Console v3</title>
 
-<!-- CMD icon -->
-<link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/8/8f/Windows_logo_-_2021.svg">
+<link rel="icon" href="more/favicon.png">
 
 <style>
   body, html {
@@ -18,7 +17,6 @@
     overflow: hidden;
   }
 
-  /* TITLE BAR */
   #title-bar {
     position: fixed;
     top: 0;
@@ -32,7 +30,6 @@
     z-index: 200;
   }
 
-  /* TERMINAL */
   #terminal {
     padding: 30px 10px 60px 10px;
     overflow-y: auto;
@@ -47,7 +44,6 @@
     padding: 2px 0;
   }
 
-  /* INPUT BAR */
   #input-container {
     position: fixed;
     bottom: 0;
@@ -79,8 +75,7 @@
 
 <body>
 
-<div id="title-bar">Console</div>
-
+<div id="title-bar">Console v3</div>
 <div id="terminal"></div>
 
 <div id="input-container">
@@ -95,7 +90,41 @@
 
   let currentColor = "#00aa00";
 
-  function applyColor(color) {
+  // CMD COLOR MAP (0–F like real Windows CMD)
+  const colorMap = {
+    "0": "#000000", // black
+    "1": "#0000aa", // blue
+    "2": "#00aa00", // green
+    "3": "#00aaaa", // cyan
+    "4": "#aa0000", // red
+    "5": "#aa00aa", // magenta
+    "6": "#aa5500", // yellow/brown
+    "7": "#aaaaaa", // light gray
+    "8": "#555555", // dark gray
+    "9": "#5555ff", // light blue
+    "a": "#55ff55", // light green
+    "b": "#55ffff", // light cyan
+    "c": "#ff5555", // light red
+    "d": "#ff55ff", // pink
+    "e": "#ffff55", // yellow
+    "f": "#ffffff"  // white
+  };
+
+  function applyColor(code) {
+    if (!code) return;
+
+    code = code.toLowerCase();
+
+    // CMD format: 0F = bg + fg → we only use FG for simplicity
+    const fg = code[1] || code[0];
+
+    const color = colorMap[fg];
+
+    if (!color) {
+      print("Invalid color code. Use like: color 0f");
+      return;
+    }
+
     currentColor = color;
     terminal.style.color = color;
     input.style.color = color;
@@ -136,19 +165,20 @@
     // TITLE
     if (base === "title") {
       const newTitle = cmd.slice(6).trim();
-      titleBar.textContent = newTitle || "Console";
-      document.title = newTitle || "Console";
+      const finalTitle = newTitle || "Console v3";
+      titleBar.textContent = finalTitle;
+      document.title = finalTitle;
       return;
     }
 
-    // COLOR
+    // COLOR (CMD STYLE)
     if (base === "color") {
-      const color = parts[1];
-      if (!color) {
-        print("Usage: color <name/hex>");
+      const code = parts[1];
+      if (!code) {
+        print("Usage: color 0f");
         return;
       }
-      applyColor(color);
+      applyColor(code);
       return;
     }
 
