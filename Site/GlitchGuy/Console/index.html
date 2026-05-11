@@ -4,17 +4,24 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Console v3</title>
-
 <link rel="icon" href="more/favicon.png">
 
 <style>
-  body, html {
+  :root {
+    --fg: #00aa00;
+    --bg: #000000;
+    --title-bg: #111111;
+    --title-fg: #aaaaaa;
+    --input-bg: #000000;
+  }
+
+  html, body {
     margin: 0;
     padding: 0;
-    background: black;
-    font-family: 'Courier New', monospace;
     height: 100%;
     overflow: hidden;
+    background: #000;
+    font-family: "Courier New", monospace;
   }
 
   #title-bar {
@@ -22,171 +29,650 @@
     top: 0;
     left: 0;
     width: 100%;
-    background: #111;
-    color: #aaa;
+    box-sizing: border-box;
+    background: var(--title-bg);
+    color: var(--title-fg);
     padding: 5px 10px;
     font-size: 13px;
     border-bottom: 1px solid #333;
     z-index: 200;
+    user-select: none;
   }
 
   #terminal {
-    padding: 30px 10px 60px 10px;
-    overflow-y: auto;
+    position: relative;
     height: 100vh;
     box-sizing: border-box;
-    color: #00aa00;
+    padding: 30px 10px 56px 10px;
+    overflow-y: auto;
+    background: var(--bg);
+    color: var(--fg);
+    white-space: pre-wrap;
+    word-wrap: break-word;
   }
 
   .output {
     white-space: pre-wrap;
     word-wrap: break-word;
-    padding: 2px 0;
+    padding: 1px 0;
   }
 
   #input-container {
     position: fixed;
-    bottom: 0;
     left: 0;
+    bottom: 0;
     width: 100%;
-    background: black;
-    padding: 8px;
+    box-sizing: border-box;
+    padding: 8px 10px;
     display: flex;
     align-items: center;
+    gap: 4px;
+    background: var(--input-bg);
     border-top: 1px solid #003300;
+    z-index: 150;
   }
 
   .prompt {
-    margin-right: 5px;
-    color: #00aa00;
+    color: var(--fg);
+    flex: 0 0 auto;
+    user-select: none;
   }
 
   #input {
-    background: none;
+    flex: 1 1 auto;
+    background: transparent;
     border: none;
     outline: none;
-    width: 100%;
-    font-family: inherit;
+    font: inherit;
     font-size: 14px;
+    color: var(--fg);
+    caret-color: currentColor;
+    min-width: 0;
+  }
+
+  #boot {
+    position: fixed;
+    inset: 0;
+    background: #000;
     color: #00aa00;
+    z-index: 9999;
+    padding: 20px;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+  }
+
+  #boot-text {
+    margin: 0;
   }
 </style>
 </head>
 
 <body>
+  <div id="boot"><pre id="boot-text"></pre></div>
 
-<div id="title-bar">Console v3</div>
-<div id="terminal"></div>
+  <div id="title-bar">Console v3</div>
+  <div id="terminal"></div>
 
-<div id="input-container">
-  <span class="prompt">C:\></span>
-  <input type="text" id="input" autofocus />
-</div>
+  <div id="input-container">
+    <span class="prompt">C:\></span>
+    <input id="input" type="text" autocomplete="off" spellcheck="false" autofocus />
+  </div>
 
 <script>
+(() => {
   const terminal = document.getElementById("terminal");
   const input = document.getElementById("input");
   const titleBar = document.getElementById("title-bar");
+  const prompt = document.querySelector(".prompt");
+  const boot = document.getElementById("boot");
+  const bootText = document.getElementById("boot-text");
 
-  let currentColor = "#00aa00";
-
-  // CMD COLOR MAP (0–F like real Windows CMD)
   const colorMap = {
-    "0": "#000000", // black
-    "1": "#0000aa", // blue
-    "2": "#00aa00", // green
-    "3": "#00aaaa", // cyan
-    "4": "#aa0000", // red
-    "5": "#aa00aa", // magenta
-    "6": "#aa5500", // yellow/brown
-    "7": "#aaaaaa", // light gray
-    "8": "#555555", // dark gray
-    "9": "#5555ff", // light blue
-    "a": "#55ff55", // light green
-    "b": "#55ffff", // light cyan
-    "c": "#ff5555", // light red
-    "d": "#ff55ff", // pink
-    "e": "#ffff55", // yellow
-    "f": "#ffffff"  // white
+    "0": "#000000",
+    "1": "#0000aa",
+    "2": "#00aa00",
+    "3": "#00aaaa",
+    "4": "#aa0000",
+    "5": "#aa00aa",
+    "6": "#aa5500",
+    "7": "#aaaaaa",
+    "8": "#555555",
+    "9": "#5555ff",
+    "a": "#55ff55",
+    "b": "#55ffff",
+    "c": "#ff5555",
+    "d": "#ff55ff",
+    "e": "#ffff55",
+    "f": "#ffffff"
   };
 
-  function applyColor(code) {
-    if (!code) return;
-
-    code = code.toLowerCase();
-
-    // CMD format: 0F = bg + fg → we only use FG for simplicity
-    const fg = code[1] || code[0];
-
-    const color = colorMap[fg];
-
-    if (!color) {
-      print("Invalid color code. Use like: color 0f");
-      return;
+  const helpData = {
+    cls: {
+      usage: "cls",
+      desc: "Clears the screen."
+    },
+    color: {
+      usage: "color XY",
+      desc: "Changes colors. X = background, Y = text. Example: color f0"
+    },
+    title: {
+      usage: "title [text]",
+      desc: "Changes the window title."
+    },
+    echo: {
+      usage: "echo [text]",
+      desc: "Prints text to the screen."
+    },
+    help: {
+      usage: "help [command]",
+      desc: "Shows help for commands."
+    },
+    calc: {
+      usage: "calc 2+2",
+      desc: "Calculates simple math using +, -, /, and x."
+    },
+    clearhistory: {
+      usage: "clearhistory",
+      desc: "Clears saved command history."
+    },
+    matrix: {
+      usage: "matrix",
+      desc: "Runs a Matrix-style screen effect."
+    },
+    dir: {
+      usage: "dir",
+      desc: "Shows a fake directory listing."
+    },
+    time: {
+      usage: "time",
+      desc: "Shows the current time."
+    },
+    date: {
+      usage: "date",
+      desc: "Shows the current date."
     }
+  };
 
-    currentColor = color;
-    terminal.style.color = color;
-    input.style.color = color;
-    document.querySelector(".prompt").style.color = color;
+  function loadLS(key, fallback) {
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? fallback : v;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function saveLS(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {}
+  }
+
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem("history");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  let fgColor = loadLS("fg", "#00aa00");
+  let bgColor = loadLS("bg", "#000000");
+  let savedTitle = loadLS("title", "Console v3");
+  let history = loadHistory();
+  let historyIndex = history.length;
+
+  titleBar.textContent = savedTitle;
+  document.title = savedTitle;
+
+  function saveState() {
+    saveLS("fg", fgColor);
+    saveLS("bg", bgColor);
+    saveLS("title", document.title);
+    try {
+      localStorage.setItem("history", JSON.stringify(history.slice(-200)));
+    } catch {}
+  }
+
+  function applyTheme() {
+    document.documentElement.style.setProperty("--fg", fgColor);
+    document.documentElement.style.setProperty("--bg", bgColor);
+
+    terminal.style.background = bgColor;
+    terminal.style.color = fgColor;
+
+    input.style.color = fgColor;
+    prompt.style.color = fgColor;
   }
 
   function print(text) {
-    const div = document.createElement("div");
-    div.className = "output";
-    div.style.color = currentColor;
-    div.textContent = text;
-    terminal.appendChild(div);
+    const line = document.createElement("div");
+    line.className = "output";
+    line.style.color = fgColor;
+    line.textContent = String(text);
+    terminal.appendChild(line);
     terminal.scrollTop = terminal.scrollHeight;
   }
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const cmd = input.value.trim();
-      input.value = "";
-      runCommand(cmd);
-    }
-  });
+  function cmdNotFound(cmd) {
+    print(`'${cmd}' is not recognized as an internal or external command.`);
+  }
 
-  function runCommand(cmd) {
+  function setColor(code) {
+    if (!code || code.length < 2) {
+      print("Usage: color XY");
+      print("Example: color f0");
+      return;
+    }
+
+    code = code.toLowerCase();
+    const bg = colorMap[code[0]];
+    const fg = colorMap[code[1]];
+
+    if (!bg || !fg) {
+      print("Invalid color code.");
+      print("Use hex digits 0-9 or a-f like: color f0");
+      return;
+    }
+
+    bgColor = bg;
+    fgColor = fg;
+    applyTheme();
+    saveState();
+  }
+
+  function tokenizeExpression(expr) {
+    const cleaned = expr.replace(/\s+/g, "").replace(/x/gi, "*");
+    if (!cleaned) return null;
+    if (!/^[0-9+\-*/.]+$/.test(cleaned)) return null;
+
+    const tokens = [];
+    let i = 0;
+
+    while (i < cleaned.length) {
+      const ch = cleaned[i];
+
+      const prev = tokens.length ? tokens[tokens.length - 1] : null;
+      const prevIsOp = prev && prev.type === "op";
+
+      const canBeUnaryMinus = ch === "-" && (i === 0 || prevIsOp);
+      const isNumberStart = /[0-9.]/.test(ch) || canBeUnaryMinus;
+
+      if (isNumberStart) {
+        let num = "";
+        if (canBeUnaryMinus) {
+          num += "-";
+          i++;
+        }
+
+        let dotCount = 0;
+        while (i < cleaned.length && /[0-9.]/.test(cleaned[i])) {
+          if (cleaned[i] === ".") dotCount++;
+          num += cleaned[i];
+          i++;
+        }
+
+        if (num === "-" || num === "." || num === "-.") return null;
+        if ((num.match(/\./g) || []).length > 1) return null;
+
+        const value = Number(num);
+        if (!Number.isFinite(value)) return null;
+
+        tokens.push({ type: "num", value });
+        continue;
+      }
+
+      if ("+-*/".includes(ch)) {
+        tokens.push({ type: "op", value: ch });
+        i++;
+        continue;
+      }
+
+      return null;
+    }
+
+    if (tokens.length === 0) return null;
+    if (tokens[tokens.length - 1].type === "op") return null;
+
+    return tokens;
+  }
+
+  function evaluateExpression(expr) {
+    const tokens = tokenizeExpression(expr);
+    if (!tokens) return { ok: false, error: "Invalid expression." };
+
+    const prec = { "+": 1, "-": 1, "*": 2, "/": 2 };
+    const output = [];
+    const ops = [];
+
+    for (const token of tokens) {
+      if (token.type === "num") {
+        output.push(token);
+      } else {
+        while (ops.length) {
+          const top = ops[ops.length - 1];
+          if (prec[top.value] >= prec[token.value]) {
+            output.push(ops.pop());
+          } else {
+            break;
+          }
+        }
+        ops.push(token);
+      }
+    }
+
+    while (ops.length) output.push(ops.pop());
+
+    const stack = [];
+    for (const token of output) {
+      if (token.type === "num") {
+        stack.push(token.value);
+      } else {
+        if (stack.length < 2) return { ok: false, error: "Invalid expression." };
+        const b = stack.pop();
+        const a = stack.pop();
+
+        let result;
+        switch (token.value) {
+          case "+": result = a + b; break;
+          case "-": result = a - b; break;
+          case "*": result = a * b; break;
+          case "/":
+            if (b === 0) return { ok: false, error: "Division by zero." };
+            result = a / b;
+            break;
+          default:
+            return { ok: false, error: "Invalid expression." };
+        }
+        stack.push(result);
+      }
+    }
+
+    if (stack.length !== 1) return { ok: false, error: "Invalid expression." };
+
+    return { ok: true, value: stack[0] };
+  }
+
+  function showHelp(arg) {
+    if (arg) {
+      const key = arg.toLowerCase();
+      const item = helpData[key];
+      if (!item) {
+        print(`No help found for '${arg}'.`);
+        return;
+      }
+      print(`${key}`);
+      print(`Usage: ${item.usage}`);
+      print(`${item.desc}`);
+      return;
+    }
+
+    print("Available commands:");
+    Object.keys(helpData).forEach(cmd => print(`  ${cmd}`));
+    print("Type: help <command>");
+  }
+
+  function showDir() {
+    print(" Volume in drive C has no label.");
+    print(" Volume Serial Number is 0000-0000");
+    print("");
+    print(" Directory of C:\\");
+    print("");
+    print("01/01/2026  12:00 AM    <DIR>          Windows");
+    print("01/01/2026  12:00 AM    <DIR>          Users");
+    print("01/01/2026  12:00 AM    <DIR>          Program Files");
+    print("01/01/2026  12:00 AM             1,024 readme.txt");
+    print("               1 File(s)          1,024 bytes");
+    print("               3 Dir(s)  999,999,999 bytes free");
+  }
+
+  function showTime() {
+    const now = new Date();
+    print(now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }));
+  }
+
+  function showDate() {
+    const now = new Date();
+    print(now.toLocaleDateString([], { year: "numeric", month: "2-digit", day: "2-digit" }));
+  }
+
+  function runMatrix() {
+    terminal.innerHTML = "";
+    const chars = "01";
+    let ticks = 0;
+
+    const interval = setInterval(() => {
+      let line = "";
+      for (let i = 0; i < 80; i++) {
+        line += chars[(Math.random() * 2) | 0];
+      }
+      print(line);
+      ticks++;
+      if (ticks >= 55) {
+        clearInterval(interval);
+        print("Matrix stopped.");
+      }
+    }, 50);
+  }
+
+  function runCommand(raw) {
+    const cmd = raw.trim();
     if (!cmd) return;
 
-    print("C:\\> " + cmd);
+    history.push(cmd);
+    history = history.slice(-200);
+    historyIndex = history.length;
+    saveState();
 
-    const parts = cmd.split(" ");
+    print(`C:\\> ${cmd}`);
+
+    const parts = cmd.split(/\s+/);
     const base = parts[0].toLowerCase();
 
-    // CLS
     if (base === "cls") {
       terminal.innerHTML = "";
       return;
     }
 
-    // TITLE
     if (base === "title") {
       const newTitle = cmd.slice(6).trim();
       const finalTitle = newTitle || "Console v3";
       titleBar.textContent = finalTitle;
       document.title = finalTitle;
+      saveState();
       return;
     }
 
-    // COLOR (CMD STYLE)
     if (base === "color") {
-      const code = parts[1];
-      if (!code) {
-        print("Usage: color 0f");
+      setColor(parts[1]);
+      return;
+    }
+
+    if (base === "echo") {
+      print(cmd.slice(5));
+      return;
+    }
+
+    if (base === "help") {
+      showHelp(parts[1]);
+      return;
+    }
+
+    if (base === "clearhistory") {
+      history = [];
+      historyIndex = 0;
+      saveState();
+      print("History cleared.");
+      return;
+    }
+
+    if (base === "dir") {
+      showDir();
+      return;
+    }
+
+    if (base === "time") {
+      showTime();
+      return;
+    }
+
+    if (base === "date") {
+      showDate();
+      return;
+    }
+
+    if (base === "matrix") {
+      runMatrix();
+      return;
+    }
+
+    if (base === "calc") {
+      const expr = cmd.slice(5).trim();
+      if (!expr) {
+        print("Usage: calc 2+2");
+        print("Allowed: + - / x");
         return;
       }
-      applyColor(code);
+
+      const result = evaluateExpression(expr);
+      if (!result.ok) {
+        print(result.error);
+        return;
+      }
+
+      print(`${expr} = ${result.value}`);
       return;
     }
 
-    print("'" + cmd + "' is not recognized as a command.");
+    cmdNotFound(cmd);
   }
 
-  document.addEventListener("click", () => input.focus());
-</script>
+  function playKeySound(key) {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
 
+      if (!window.__cmdAudioCtx) {
+        window.__cmdAudioCtx = new AudioContextClass();
+      }
+
+      const ctx = window.__cmdAudioCtx;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "square";
+      osc.frequency.value = key === "Enter" ? 180 : 260;
+
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.03, ctx.currentTime + 0.002);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.02);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.022);
+    } catch {}
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      const value = input.value;
+      input.value = "";
+      runCommand(value);
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      if (history.length === 0) return;
+      e.preventDefault();
+      historyIndex = Math.max(0, historyIndex - 1);
+      input.value = history[historyIndex] || "";
+      queueMicrotask(() => {
+        try {
+          input.setSelectionRange(input.value.length, input.value.length);
+        } catch {}
+      });
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      if (history.length === 0) return;
+      e.preventDefault();
+      historyIndex = Math.min(history.length, historyIndex + 1);
+      input.value = historyIndex >= history.length ? "" : (history[historyIndex] || "");
+      queueMicrotask(() => {
+        try {
+          input.setSelectionRange(input.value.length, input.value.length);
+        } catch {}
+      });
+      return;
+    }
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const typed = input.value.trim().toLowerCase();
+      if (!typed) return;
+
+      const commandList = Object.keys(helpData);
+      const match = commandList.find(c => c.startsWith(typed));
+      if (match) {
+        input.value = match + " ";
+      }
+      return;
+    }
+
+    if (
+      e.key.length === 1 ||
+      e.key === "Backspace" ||
+      e.key === "Delete" ||
+      e.key === "Spacebar"
+    ) {
+      playKeySound(e.key);
+    }
+  }
+
+  input.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("click", () => input.focus());
+  window.addEventListener("focus", () => input.focus());
+
+  function startBoot() {
+    const lines = [
+      "Booting Console v3...",
+      "Loading shell modules...",
+      "Mounting terminal...",
+      "Starting services...",
+      "Ready."
+    ];
+
+    let i = 0;
+    const step = () => {
+      if (i < lines.length) {
+        bootText.textContent += lines[i] + "\n";
+        i++;
+        setTimeout(step, 350);
+      } else {
+        setTimeout(() => {
+          boot.style.display = "none";
+          input.focus();
+        }, 450);
+      }
+    };
+
+    step();
+  }
+
+  applyTheme();
+  startBoot();
+
+  if (history.length === 0) {
+    print("Type help for commands.");
+  }
+})();
+</script>
 </body>
 </html>
