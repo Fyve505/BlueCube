@@ -74,8 +74,7 @@ class SiteLayout extends HTMLElement {
 <main id="page-content"></main>
 
 <footer>
-    <p>
-  © 2025-2026 Fyve505. This work is licensed under
+    <p>&copy; 2025-2026 Fyve505. This work is licensed under
   <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
 </p>
 
